@@ -156,44 +156,4 @@ func newRequest() async throws {
     print(verified ? "Verified!" : "Failed to verify")
 }
 
-func continueRequest(requestId: String) async throws {
-
-    let swoir = Swoir(backend: Swoirenberg.self)
-    let manifest = URL(fileURLWithPath: "./proof_age.json")
-    let circuit = try swoir.createCircuit(manifest: manifest)
-
-    var proofRequest = await markProofRequestAsPending(requestId: requestId)
-    if proofRequest == nil {
-        print("Failed to mark proof request as pending")
-        return
-    }
-    proofRequest = await markProofRequestAsAccepted(requestId: proofRequest!.id)
-
-    let mrz = bytes_to_data([80, 60, 85, 84, 79, 83, 77, 73, 84, 72, 60, 60, 74, 79, 72, 78, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 49, 50, 51, 52, 53, 54, 55, 56, 57, 49, 85, 84, 79, 56, 53, 48, 51, 50, 51, 56, 77, 50, 56, 48, 50, 49, 53, 52, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 48, 48])
-    let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "yyyyMMdd"
-    dateFormatter.locale = Locale.current
-
-    let formattedDate = dateFormatter.string(from: Date())
-
-    let current_date = utf8_to_data(formattedDate)
-    let min_age_required = 18
-    let proof = try circuit.prove([ "mrz": mrz, "current_date": current_date, "min_age_required": min_age_required])
-
-    let length = 2144
-    let startIndex = max(0, proof.proof.count - length)
-    let proofOnly = proof.proof.subdata(in: startIndex..<proof.proof.count)
-
-    proofRequest = await completeProofRequest(requestId: proofRequest!.id, proof: data_to_hex(proofOnly))
-    if proofRequest == nil {
-        print("Failed to send proof")
-        return
-    }
-    print(proofRequest!)
-
-    let verified = try circuit.verify(proof)
-    print(verified ? "Verified!" : "Failed to verify")
-}
-
 try await newRequest()
-try await continueRequest(requestId: "1aee37e6-ab0c-405d-bbbf-33c45aedbe6a")
